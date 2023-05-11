@@ -19,23 +19,19 @@ func main() {
 		fmt.Fscan(in, &a, &b)
 		hash[a] = b
 	}
-	arr := make([]int64, n)
+	var minLen int64 = -1
+	set := make(map[int64]int64)
 	for i = 0; i < n; i++ {
 		var a int64
 		fmt.Fscan(in, &a)
-		arr[i] = hash[a]
-	}
-	set := make(map[int64]int64)
-	var minLen int64 = -1
-	for i = 0; i < n; i++ {
-		if _, ok := set[arr[i]]; ok {
-			length := i - set[arr[i]]
+		if _, ok := set[hash[a]]; ok {
+			length := i - set[hash[a]]
 			if minLen == -1 || length < minLen {
 				minLen = length
 			}
-			set[arr[i]] = i
+			set[hash[a]] = i
 		} else {
-			set[arr[i]] = i
+			set[hash[a]] = i
 		}
 		if len(set) == int(n) {
 			minLen = i + 1
