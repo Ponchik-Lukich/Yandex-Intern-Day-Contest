@@ -1,41 +1,110 @@
 package main
 
 import (
-	"bufio"
 	"fmt"
-	"os"
-	"strconv"
+	"strings"
 )
 
-func contains(s []string, r string) bool {
-	for _, a := range s {
-		if a == r {
-			return true
-		}
-	}
-	return false
+const (
+	WaitingInLine = iota
+	StowingLuggage
+	WaitingForSeat
+)
+
+type Passenger struct {
+	Row, Seat, Time, Status, Position int
+	Side                              bool
 }
 
 func main() {
-	scanner := bufio.NewScanner(os.Stdin)
-	scanner.Scan()
-	t, _ := strconv.Atoi(scanner.Text())
-	vowels := []string{"a", "e", "i", "o", "u", "y"}
-	for i := 0; i < t; i++ {
-		scanner.Scan()
-		word := scanner.Text()
-		lastTwo := word[len(word)-2:]
-		last := word[len(word)-1:]
-		if lastTwo == "sh" || lastTwo == "ch" || last == "s" || last == "x" || last == "z" {
-			fmt.Println(scanner.Text() + "es")
-		} else if last == "y" {
-			if !contains(vowels, word[len(word)-2:len(word)-1]) {
-				fmt.Println(scanner.Text()[:len(scanner.Text())-1] + "ies")
-			} else {
-				fmt.Println(scanner.Text() + "s")
-			}
-		} else {
-			fmt.Println(scanner.Text() + "s")
-		}
+	var n int
+	_, err := fmt.Scan(&n)
+	if err != nil {
+		panic(err)
 	}
+	passengers := make([]Passenger, n)
+	plane := make([][]bool, 30)
+	for i := range plane {
+		plane[i] = make([]bool, 7)
+	}
+	for i := 0; i < n; i++ {
+		var row, time int
+		var seat string
+		_, err := fmt.Scan(&time, &row, &seat)
+		if err != nil {
+			panic(err)
+		}
+		seatInt := strings.Index("ABCDEF", seat)
+		side := false
+		if seatInt > 2 {
+			side = true
+			seatInt = 5 - seatInt
+		}
+		passengers[i] = Passenger{row - 1, seatInt, time, WaitingInLine, -i, side}
+	}
+	time := 0
+	for len(passengers) > 0 {
+		for i := 0; i < len(passengers); i++ {
+			seat := passengers[i].Seat
+			neighbour := passengers[i].Seat + 1
+			secondNeighbour := passengers[i].Seat + 2
+			if passengers[i].Side {
+				seat = 6 - seat
+				neighbour = seat - 1
+				secondNeighbour = seat - 2
+			}
+			switch passengers[i].Status {
+			case WaitingInLine:
+				if passengers[i].Position < passengers[i].Row && (passengers[i].Position+1 < len(plane) &&
+					passengers[i].Position+1 > 0 &&
+					!plane[passengers[i].Position+1][3]) {
+					plane[passengers[i].Position][3] = false
+					plane[passengers[i].Position+1][3] = true
+					passengers[i].Position++
+				} else if passengers[i].Position == passengers[i].Row {
+					if (seat == 2 || seat == 4 || ((seat == 1 || seat == 5) && !plane[passengers[i].Row][neighbour]) || ((seat == 0 || seat == 6) && !plane[passengers[i].Row][neighbour] && !plane[passengers[i].Row][secondNeighbour])) && passengers[i].Time == 0 {
+						plane[passengers[i].Row][seat] = true
+						plane[passengers[i].Position][3] = false
+						passengers = append(passengers[:i], passengers[i+1:]...)
+						i--
+					} else {
+						passengers[i].Status = StowingLuggage
+					}
+				} else if passengers[i].Position+1 <= 0 && !plane[0][3] {
+					passengers[i].Position++
+					if i == len(passengers)-1 {
+						plane[0][3] = true
+					}
+				}
+			case StowingLuggage:
+				passengers[i].Time--
+				passengers[i].Status = WaitingForSeat
+				if seat == 0 || seat == 6 {
+					if plane[passengers[i].Row][neighbour] {
+						passengers[i].Time += 5
+					}
+					if plane[passengers[i].Row][secondNeighbour] {
+						passengers[i].Time += 5
+						if plane[passengers[i].Row][neighbour] {
+							passengers[i].Time += 5
+						}
+					}
+				} else if seat == 1 || seat == 5 {
+					if plane[passengers[i].Row][neighbour] {
+						passengers[i].Time += 5
+					}
+				}
+			case WaitingForSeat:
+				passengers[i].Time--
+				if passengers[i].Time <= 0 {
+					plane[passengers[i].Row][seat] = true
+					plane[passengers[i].Position][3] = false
+					passengers = append(passengers[:i], passengers[i+1:]...)
+					i--
+				}
+			}
+		}
+		time++
+	}
+	fmt.Println(time)
 }
