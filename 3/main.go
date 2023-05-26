@@ -55,7 +55,11 @@ func main() {
 	for i := 0; i < m; i++ {
 		var a int
 		fmt.Fscan(in, &a)
-		hash[i+1] = hash[i+1] * a / 100
+		if hash[i+1]*a%100 == 0 {
+			hash[i+1] = hash[i+1] * a / 100
+		} else {
+			hash[i+1] = hash[i+1]*a/100 + 1
+		}
 		if hash[i+1] == 0 {
 			continue
 		}
